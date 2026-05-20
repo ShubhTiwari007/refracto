@@ -3,13 +3,20 @@
 
 let audioCtx = null;
 let isMuted = false;
+let bgMusicInterval = null;
+let bgMusicStep = 0;
 
 function getAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    setTimeout(() => {
+      startBackgroundMusic();
+    }, 100);
   }
   if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
+    audioCtx.resume().then(() => {
+      startBackgroundMusic();
+    });
   }
   return audioCtx;
 }
@@ -18,8 +25,95 @@ export function setMute(muteState) {
   isMuted = muteState;
   if (audioCtx && isMuted) {
     audioCtx.suspend();
+    stopBackgroundMusic();
   } else if (audioCtx && !isMuted) {
-    audioCtx.resume();
+    audioCtx.resume().then(() => {
+      startBackgroundMusic();
+    });
+  }
+}
+
+// Cyberpunk Ambient Optic Drone Synthesizer
+export function startBackgroundMusic() {
+  if (isMuted) return;
+  if (bgMusicInterval) return; // Already running
+
+  try {
+    const ctx = getAudioContext();
+    // A Major / F# Minor Pentatonic Scale (Warm digital flow)
+    const notes = [164.81, 185.00, 220.00, 246.94, 277.18]; // E3, F#3, A3, B3, C#4
+
+    const playStep = () => {
+      if (isMuted || ctx.state === 'suspended') return;
+      const now = ctx.currentTime;
+
+      // 1. Digital Pad Hum (plays every 8 steps)
+      if (bgMusicStep % 8 === 0) {
+        const oscBass = ctx.createOscillator();
+        const gainBass = ctx.createGain();
+        const lpFilter = ctx.createBiquadFilter();
+
+        oscBass.type = 'triangle';
+        oscBass.frequency.setValueAtTime(110.00, now); // A2 bass pad note
+
+        lpFilter.type = 'lowpass';
+        lpFilter.frequency.setValueAtTime(150, now);
+
+        gainBass.gain.setValueAtTime(0, now);
+        gainBass.gain.linearRampToValueAtTime(0.05, now + 0.8); // Slow drone fade
+        gainBass.gain.exponentialRampToValueAtTime(0.001, now + 3.2);
+
+        oscBass.connect(lpFilter);
+        lpFilter.connect(gainBass);
+        gainBass.connect(ctx.destination);
+
+        oscBass.start(now);
+        oscBass.stop(now + 3.4);
+      }
+
+      // 2. Neon Laser Arpeggio tick (plays on even steps)
+      if (bgMusicStep % 2 === 0) {
+        const oscArp = ctx.createOscillator();
+        const gainArp = ctx.createGain();
+        const delay = ctx.createDelay();
+        const delayGain = ctx.createGain();
+
+        oscArp.type = 'sine';
+        const noteIndex = (bgMusicStep * 2) % notes.length;
+        // Alternate octaves to create a dancing light effect
+        const octave = bgMusicStep % 4 === 0 ? 2 : 1; 
+        oscArp.frequency.setValueAtTime(notes[noteIndex] * octave, now);
+
+        gainArp.gain.setValueAtTime(0.015, now);
+        gainArp.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        delay.delayTime.value = 0.25;
+        delayGain.gain.value = 0.25;
+
+        oscArp.connect(gainArp);
+        gainArp.connect(ctx.destination);
+
+        gainArp.connect(delay);
+        delay.connect(delayGain);
+        delayGain.connect(ctx.destination);
+
+        oscArp.start(now);
+        oscArp.stop(now + 0.4);
+      }
+
+      bgMusicStep++;
+    };
+
+    bgMusicInterval = setInterval(playStep, 400); // Drone tempo
+  } catch (e) {
+    console.warn("Background music start failed:", e);
+  }
+}
+
+export function stopBackgroundMusic() {
+  if (bgMusicInterval) {
+    clearInterval(bgMusicInterval);
+    bgMusicInterval = null;
   }
 }
 

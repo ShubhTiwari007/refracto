@@ -326,17 +326,38 @@ function GameCanvas({ level, onLevelClear, onQuit }) {
       const cellW = W / state.cols;
       const cellH = H / state.rows;
 
-      ctx.fillStyle = '#03030a';
+      ctx.fillStyle = '#02020a';
       ctx.fillRect(0, 0, W, H);
 
-      // 1. Draw Grid Lines
-      ctx.strokeStyle = 'rgba(255, 0, 127, 0.05)';
-      ctx.lineWidth = 0.5;
+      // Optic table grid styling
+      ctx.strokeStyle = 'rgba(0, 242, 254, 0.03)';
+      ctx.lineWidth = 1.0;
       for (let c = 0; c <= state.cols; c++) {
         ctx.beginPath(); ctx.moveTo(c * cellW, 0); ctx.lineTo(c * cellW, H); ctx.stroke();
       }
       for (let r = 0; r <= state.rows; r++) {
         ctx.beginPath(); ctx.moveTo(0, r * cellH); ctx.lineTo(W, r * cellH); ctx.stroke();
+      }
+
+      // Draw subtle intersection nodes
+      ctx.fillStyle = 'rgba(0, 242, 254, 0.08)';
+      for (let r = 1; r < state.rows; r++) {
+        for (let c = 1; c < state.cols; c++) {
+          ctx.beginPath();
+          ctx.arc(c * cellW, r * cellH, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Floating photon particles
+      ctx.fillStyle = 'rgba(0, 242, 254, 0.06)';
+      const particleCycle = (Date.now() * 0.0005) % 1;
+      for (let i = 0; i < 15; i++) {
+        const px = (Math.sin(i * 123.4) * 0.5 + 0.5) * W;
+        const py = (((i * 56.7) / 100 + particleCycle) * H) % H;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.0 + (i % 2), 0, Math.PI * 2);
+        ctx.fill();
       }
 
       // 2. Draw placed blocks
@@ -352,40 +373,77 @@ function GameCanvas({ level, onLevelClear, onQuit }) {
             ctx.rotate((item.rotation * Math.PI) / 180);
 
             if (item.type === 'mirror') {
-              // Draw flat mirror line diagonal
-              ctx.strokeStyle = '#e2e8f0';
-              ctx.lineWidth = 6;
+              // Beveled metallic block housing
+              ctx.fillStyle = '#11101e';
+              ctx.strokeStyle = 'rgba(0, 242, 254, 0.3)';
+              ctx.lineWidth = 1.5;
+              ctx.fillRect(-cellW * 0.35, -cellH * 0.35, cellW * 0.7, cellH * 0.7);
+              ctx.strokeRect(-cellW * 0.35, -cellH * 0.35, cellW * 0.7, cellH * 0.7);
+
+              // Glass reflective mirror layer diagonal
+              ctx.save();
+              ctx.shadowColor = '#00f2fe';
+              ctx.shadowBlur = 8;
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 4.0;
               ctx.beginPath();
-              ctx.moveTo(-cellW * 0.35, cellH * 0.35);
-              ctx.lineTo(cellW * 0.35, -cellH * 0.35);
+              ctx.moveTo(-cellW * 0.28, cellH * 0.28);
+              ctx.lineTo(cellW * 0.28, -cellH * 0.28);
               ctx.stroke();
 
-              // Mirror glow holder
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-              ctx.lineWidth = 12;
-              ctx.stroke();
+              // Mirror border clips
+              ctx.fillStyle = '#00f2fe';
+              const clips = [[-cellW * 0.28, cellH * 0.28], [cellW * 0.28, -cellH * 0.28]];
+              clips.forEach(([cx, cy]) => {
+                ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill();
+              });
+              ctx.restore();
             } 
             else if (item.type === 'prism') {
-              // Draw triangle prism
-              ctx.fillStyle = 'rgba(0, 242, 254, 0.2)';
+              // Outer beveled base
+              ctx.fillStyle = '#101625';
+              ctx.strokeStyle = 'rgba(0, 242, 254, 0.25)';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.arc(0, 0, Math.min(cellW, cellH) * 0.4, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+
+              // Glass refracting triangle
+              ctx.save();
+              ctx.shadowColor = '#00f2fe';
+              ctx.shadowBlur = 10;
+              ctx.fillStyle = 'rgba(0, 242, 254, 0.25)';
               ctx.strokeStyle = '#00f2fe';
               ctx.lineWidth = 2.5;
               ctx.beginPath();
-              ctx.moveTo(0, -cellH * 0.35);
-              ctx.lineTo(cellW * 0.35, cellH * 0.3);
-              ctx.lineTo(-cellW * 0.35, cellH * 0.3);
+              ctx.moveTo(0, -cellH * 0.32);
+              ctx.lineTo(cellW * 0.32, cellH * 0.26);
+              ctx.lineTo(-cellW * 0.32, cellH * 0.26);
               ctx.closePath();
               ctx.fill();
               ctx.stroke();
+              ctx.restore();
             } 
             else if (item.type.startsWith('filter-')) {
-              // Color filter panel
               const colKey = item.type.split('-')[1];
-              ctx.fillStyle = `rgba(${colKey === 'red' ? '255,0,85' : colKey === 'green' ? '0,255,135' : '0,127,255'}, 0.25)`;
+              // Block base housing
+              ctx.fillStyle = '#101018';
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+              ctx.lineWidth = 1;
+              ctx.fillRect(-cellW * 0.35, -cellH * 0.35, cellW * 0.7, cellH * 0.7);
+              ctx.strokeRect(-cellW * 0.35, -cellH * 0.35, cellW * 0.7, cellH * 0.7);
+
+              // Tinted beveled filter glass
+              ctx.save();
+              ctx.shadowColor = COLORS[colKey];
+              ctx.shadowBlur = 8;
+              ctx.fillStyle = `rgba(${colKey === 'red' ? '255,0,85' : colKey === 'green' ? '0,255,135' : '0,127,255'}, 0.28)`;
               ctx.strokeStyle = COLORS[colKey];
-              ctx.lineWidth = 3.0;
-              ctx.fillRect(-cellW * 0.1, -cellH * 0.35, cellW * 0.2, cellH * 0.7);
-              ctx.strokeRect(-cellW * 0.1, -cellH * 0.35, cellW * 0.2, cellH * 0.7);
+              ctx.lineWidth = 2.5;
+              ctx.fillRect(-cellW * 0.08, -cellH * 0.3, cellW * 0.16, cellH * 0.6);
+              ctx.strokeRect(-cellW * 0.08, -cellH * 0.3, cellW * 0.16, cellH * 0.6);
+              ctx.restore();
             }
 
             ctx.restore();
@@ -393,37 +451,57 @@ function GameCanvas({ level, onLevelClear, onQuit }) {
         }
       }
 
-      // 3. Draw Laser emitters
+      // 3. Draw Laser emitters (Cyber cannons)
       state.emitters.forEach(em => {
         const cX = em.col * cellW + cellW / 2;
         const cY = em.row * cellH + cellH / 2;
 
         ctx.save();
-        ctx.fillStyle = '#111';
-        ctx.strokeStyle = COLORS[em.color];
-        ctx.lineWidth = 3;
+        // Emitter casing
+        ctx.fillStyle = '#14141d';
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 2.0;
         ctx.beginPath();
-        ctx.arc(cX, cY, Math.min(cellW, cellH) * 0.32, 0, Math.PI * 2);
+        ctx.arc(cX, cY, Math.min(cellW, cellH) * 0.34, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
 
-        // Inner glowing core
+        // Laser color ring
+        ctx.strokeStyle = COLORS[em.color];
+        ctx.lineWidth = 3.0;
+        ctx.beginPath();
+        ctx.arc(cX, cY, Math.min(cellW, cellH) * 0.26, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Core bright lens
+        ctx.save();
+        ctx.shadowColor = COLORS[em.color];
+        ctx.shadowBlur = 12;
         ctx.fillStyle = COLORS[em.color];
         ctx.beginPath();
         ctx.arc(cX, cY, Math.min(cellW, cellH) * 0.14, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
+
+        // Specular highlight white dot
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(cX - 2, cY - 2, 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
       });
 
-      // 4. Draw Receptors / Targets
+      // 4. Draw Receptors / Targets (Optic sensors)
       state.receptors.forEach(r => {
         const cX = r.col * cellW + cellW / 2;
         const cY = r.row * cellH + cellH / 2;
 
         ctx.save();
-        ctx.fillStyle = 'rgba(10,10,10,0.85)';
-        ctx.strokeStyle = COLORS[r.color];
-        ctx.lineWidth = 3;
+        // Casing base
+        ctx.fillStyle = '#0a0a0f';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.lineWidth = 1.5;
         
         // Draw octagon target shape
         const rad = Math.min(cellW, cellH) * 0.38;
@@ -436,39 +514,81 @@ function GameCanvas({ level, onLevelClear, onQuit }) {
         ctx.fill();
         ctx.stroke();
 
-        // If target is locked/lit
+        // Target target ring
+        ctx.strokeStyle = COLORS[r.color];
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const angle = (i * Math.PI) / 4;
+          ctx.lineTo(cX + Math.cos(angle) * (rad * 0.85), cY + Math.sin(angle) * (rad * 0.85));
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        // Target lock-on plasma core
         if (r.activeColor === r.color) {
           ctx.save();
           ctx.shadowColor = COLORS[r.color];
-          ctx.shadowBlur = 12;
+          ctx.shadowBlur = 15;
           ctx.fillStyle = COLORS[r.color];
           ctx.beginPath();
           ctx.arc(cX, cY, rad * 0.45, 0, Math.PI * 2);
           ctx.fill();
+          
+          // Rotating locking brackets
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(cX, cY, rad * 0.65, Date.now() * 0.008, Date.now() * 0.008 + Math.PI * 0.4);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(cX, cY, rad * 0.65, Date.now() * 0.008 + Math.PI, Date.now() * 0.008 + Math.PI * 1.4);
+          ctx.stroke();
           ctx.restore();
         } else {
-          // Hollow indicator target center
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+          // Inactive light receiver lens
+          ctx.fillStyle = '#1c1b26';
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.lineWidth = 1.0;
           ctx.beginPath();
-          ctx.arc(cX, cY, rad * 0.3, 0, Math.PI * 2);
+          ctx.arc(cX, cY, rad * 0.35, 0, Math.PI * 2);
+          ctx.fill();
           ctx.stroke();
         }
         ctx.restore();
       });
 
-      // 5. Draw dynamic laser beams
+      // 5. Draw dynamic laser beams (Double-layered flickering beams!)
       state.beams.forEach(beam => {
         if (beam.points.length < 2) return;
 
         ctx.save();
-        ctx.strokeStyle = COLORS[beam.color];
-        ctx.lineWidth = 3.5;
-        ctx.shadowColor = COLORS[beam.color];
-        ctx.shadowBlur = 8;
+        const beamColor = COLORS[beam.color] || beam.color;
+        
+        // Outer glowing outline
+        ctx.strokeStyle = beamColor;
+        ctx.lineWidth = 4.5 + Math.sin(Date.now() * 0.04) * 0.5; // high-frequency energy flickering!
+        ctx.shadowColor = beamColor;
+        ctx.shadowBlur = 12;
         
         ctx.beginPath();
-        const startX = beam.points[0].col * cellW + cellW / 2;
-        const startY = beam.points[0].row * cellH + cellH / 2;
+        let startX = beam.points[0].col * cellW + cellW / 2;
+        let startY = beam.points[0].row * cellH + cellH / 2;
+        ctx.moveTo(startX, startY);
+
+        for (let i = 1; i < beam.points.length; i++) {
+          const pt = beam.points[i];
+          const x = pt.col * cellW + cellW / 2;
+          const y = pt.row * cellH + cellH / 2;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Inner white high-density laser core
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.2;
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
         ctx.moveTo(startX, startY);
 
         for (let i = 1; i < beam.points.length; i++) {
